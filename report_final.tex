@@ -7,6 +7,8 @@
 \usepackage{graphicx}
 \usepackage{subcaption}
 \usepackage{float}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
 \usepackage{hyperref}
 \hypersetup{colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue}
 \setlist{itemsep=2pt,topsep=3pt,leftmargin=1.4em}
@@ -33,7 +35,8 @@
 
 \title{\vspace{-1.3cm}\textbf{Concentration for Random Product Formulas}\\[3pt]
 	\large Course Paper --- Theory and Numerical Experiments}
-\author{Your Name}
+\author{Lai Yuan, Jinqi Tang\\[2pt]
+	\small School of Mathematical Sciences, Peking University}
 \date{June 19, 2026}
 
 \begin{document}
@@ -52,7 +55,7 @@
 		guarantee and $\Otil(\lambda^2t^2/\epsilon^2)$ for a fixed input, where $n$ is the qubit
 		number and $\lambda=\sum_j\norm{h_j}$. The proof decomposes the error into a deterministic
 		bias and a random fluctuation, controlling the latter by a matrix martingale (worst case) or
-		a dimension-free vector martingale (fixed input).
+		a dimension-free vector martingale (fixed input). Code and figures are available at \href{https://github.com/JinqiSMS/quantum_computing.git}{JinqiSMS/quantum\_computing.git}.
 	\end{abstract}
 	
 	
@@ -278,17 +281,54 @@
 
 	\section{Numerical Experiments}\label{sec:experiments}
 
-	This section complements the theoretical discussion with direct numerical experiments. The goal is not to fit the constants in the concentration bounds, but to reproduce their qualitative message: a single qDRIFT product formula has a larger error when it must work for all input states, while the fixed-input error is nearly independent of the system size once the Hamiltonian strength $\lambda$ is held fixed.
+	We now turn to the numerical part. The experiments below are meant to check the scaling picture from the theorems, not the hidden constants in the bounds. The point is simple: asking one random product formula to work for every input state is harder than asking it to work for one fixed input state. After normalizing the Hamiltonian strength $\lambda$, the fixed-input error should change only mildly with the system size.
 
-	\subsection{qDRIFT protocol and error metrics}
+	\subsection{Review of the theoretical prediction}
 
-	For each Hamiltonian $H=\sum_j h_j$, the experiments use the qDRIFT sampling rule from Eq.~\eqref{eq:qdrift}. At each step, one term is sampled with probability $p_j=\norm{h_j}/\lambda$, where $\lambda=\sum_j\norm{h_j}$, and the short-time unitary
+	The simulation problem starts from the Schr\"odinger equation
 	\[
-	V_k=\exp\!\left(-i\frac{t}{N}\frac{h_j}{p_j}\right)
+	i\frac{d}{dt}\ket{\psi(t)}=H\ket{\psi(t)},
 	\]
-	is applied. Each plotted point is the average over 50 independent random product formulas. The evolution time is fixed to $t=2$.
+	whose solution for a time-independent Hamiltonian is
+	\[
+	\ket{\psi(t)}=U(t)\ket{\psi(0)},\qquad U(t)=e^{-itH}.
+	\]
+	Digital Hamiltonian simulation replaces this ideal unitary by a product of simpler gates. For a Hamiltonian $H=\sum_{j=1}^L h_j$, qDRIFT uses random sampling instead of cycling through all $L$ terms in every layer. Let
+	\[
+	\lambda=\sum_{j=1}^L\norm{h_j},\qquad p_j=\frac{\norm{h_j}}{\lambda}.
+	\]
+	One sampled product formula is generated as Algorithm~\ref{alg:qdrift}. This is the algorithmic content of the flow chart in the original paper.
 
-	Two errors are measured. For the worst-case setting, the experiment computes the operator norm
+	\begin{algorithm}[H]
+		\caption{qDRIFT random product formula}
+		\label{alg:qdrift}
+		\begin{algorithmic}[1]
+			\Require Hamiltonian $H=\sum_{j=1}^L h_j$, evolution time $t$, number of steps $N$
+			\State Compute $\lambda=\sum_{j=1}^L\norm{h_j}$ and probabilities $p_j=\norm{h_j}/\lambda$
+			\State Initialize $V\gets I$
+			\For{$k=1,2,\ldots,N$}
+				\State Sample an index $j_k\in\{1,\ldots,L\}$ with probability $p_{j_k}$
+				\State Set $X_k=(\lambda/\norm{h_{j_k}})h_{j_k}$
+				\State Apply $V_k=\exp\!\left(-i(t/N)X_k\right)$
+				\State Update $V\gets V_kV$
+			\EndFor
+			\State \Return the random product formula $V=V_N\cdots V_1$
+		\end{algorithmic}
+	\end{algorithm}
+
+	The issue in the paper is whether qDRIFT works only after averaging over many such products, or whether a typical single draw already gives a useful approximation. The two main theorems reviewed above give different answers depending on the error criterion. In the all-input or worst-case setting, Theorem~\ref{thm:diamond} states that a single sampled product formula satisfies, up to logarithmic and constant factors,
+	\[
+	\epsilon_{\mathrm{all}}\lesssim \sqrt{\frac{n\lambda^2t^2}{N}},
+	\]
+	where $n$ is the number of qubits. The factor $n$ comes from controlling all input states and observables simultaneously. In the fixed-input setting, Theorem~\ref{thm:fixed} gives the dimension-free behavior
+	\[
+	\epsilon_{\mathrm{fixed}}\lesssim \sqrt{\frac{\lambda^2t^2}{N}},
+	\]
+	provided the input state is fixed independently of the sampled gates. Therefore, once $t$, $\lambda$, and $N$ are held fixed, the theory predicts that the fixed-input curve should be approximately flat as the system size grows, while the all-input curve can grow with system size.
+
+	\subsection{Error metrics}
+
+	Each plotted point is the average over 50 independent random product formulas. The evolution time is fixed to $t=2$. Two errors are measured. For the worst-case setting, the experiment computes the operator norm
 	\[
 	\epsilon_{\mathrm{all}}=\norm{U-V_N\cdots V_1}_\infty,
 	\]
@@ -306,14 +346,25 @@
 	\]
 	where $n=4,5,6,7,8$ is the number of qubits. This normalization gives $\lambda=3$ for all system sizes. The gate counts are $N=20,40,80,120,160,240,320$, and the system-size comparison uses $N=160$.
 
-	\begin{figure}[H]
+	This is the model and normalization used for Figure~3 in Chen--Huang--Kueng--Tropp. The paper plots the error as $N$ varies and also plots $\epsilon_n/\epsilon_4$ at $N=160$, averaging over 50 independent random product formulas. We keep these choices. The only change is that the gate-count plots also show all five sizes $n=4,5,6,7,8$, so the size dependence can be seen directly in the convergence curves. In the relative-error panels, I use empirical guide lines instead of copying the paper's ideal scaling guide; for these small Heisenberg chains the worst-case upper bound is not saturated exactly.
+
+	\begin{figure}[h]
+		\centering
+		\includegraphics[width=0.95\textwidth]{figures/original_paper_figure3.png}
+		\caption{Original numerical experiment from Chen--Huang--Kueng--Tropp, cropped from Figure~3 of the paper. It uses the same normalized one-dimensional Heisenberg setting and compares all-input and fixed-input errors.}
+		\label{fig:original-heisenberg-experiment}
+	\end{figure}
+
+	\begin{figure}[h]
 		\centering
 		\includegraphics[width=0.95\textwidth]{figures/figure3_reproduction.png}
-		\caption{qDRIFT simulation of the normalized one-dimensional Heisenberg chain. The top row compares the decay of the error as the gate count $N$ increases. The bottom row compares the normalized error as the number of qubits increases at fixed $N=160$. The fixed-input error is much flatter than the all-input error, in agreement with the dimension-free fixed-input concentration bound.}
+		\caption{Our qDRIFT simulation of the normalized one-dimensional Heisenberg chain. The top row compares the decay of the error as the gate count $N$ increases. The bottom row compares the normalized error as the number of qubits increases at fixed $N=160$. The fixed-input error is much flatter than the all-input error, in agreement with the dimension-free fixed-input concentration bound.}
 		\label{fig:heisenberg-experiment}
 	\end{figure}
 
-	The numerical behavior matches the theory qualitatively. The all-input error increases with the number of qubits at fixed $N$, reflecting the dimension factor in Theorem~\ref{thm:diamond}. By contrast, the fixed-input error remains close to a horizontal trend. This illustrates that the factor $n$ is tied to controlling all possible inputs at once, rather than to the qDRIFT sampling procedure itself.
+	Figure~\ref{fig:original-heisenberg-experiment} and Figure~\ref{fig:heisenberg-experiment} tell the same story. The fixed-input curves move much less with $n$ than the all-input curves. The differences are mostly presentational. The original figure highlights the $n=4$ gate-count sweep and puts the size comparison in separate panels; my plot overlays $n=4,5,6,7,8$ in the gate-count sweep. The paper's dotted line is a theoretical scaling guide, while mine is a fit to the finite-size data. Since only 50 samples are used in both cases, the shaded standard-deviation bands are still visibly noisy.
+
+	The trend is the one predicted by the two theorems. At fixed $N$, the all-input error grows with the number of qubits, as suggested by the dimension factor in Theorem~\ref{thm:diamond}. The fixed-input curve is close to flat. Thus the factor $n$ should be viewed as the price of controlling all inputs at once, not as a basic cost of the qDRIFT sampling step.
 
 	\subsection{SYK model}
 
@@ -339,7 +390,7 @@
 		\label{fig:syk-experiment}
 	\end{figure}
 
-	The SYK experiment confirms that the fixed-input advantage is not special to geometrically local Hamiltonians. Even though the SYK Hamiltonian contains all four-Majorana interaction terms and is highly nonlocal after the Jordan--Wigner mapping, the fixed-input curve remains almost flat once $\lambda$ is normalized. This is consistent with Theorem~\ref{thm:fixed}, whose bound depends on $\lambda$, $t$, and $N$, but not explicitly on the Hilbert-space dimension. The all-input curve, on the other hand, remains more sensitive to system size, as expected from the matrix martingale bound.
+	The SYK test gives a useful check beyond a local spin chain. The Hamiltonian contains all four-Majorana interaction terms and becomes highly nonlocal after the Jordan--Wigner mapping. Still, after rescaling to the same $\lambda$, the fixed-input curve is nearly flat. This agrees with Theorem~\ref{thm:fixed}, where the bound depends on $\lambda$, $t$, and $N$, but not explicitly on the Hilbert-space dimension. The all-input curve keeps a clearer size dependence, which is what the matrix-martingale bound suggests.
 	\section{Summary}
 	
 	Viewing \textsc{qDRIFT} as a random walk on $U(d)$, the error splits into a deterministic bias
@@ -348,16 +399,78 @@
 	Restricting to a fixed input replaces the matrix martingale by a dimension-free vector
 	martingale, removing $n$ and giving an $n$-fold reduction with no knowledge of the state. The
 	$L$-independence of \textsc{qDRIFT} thus stems from random sampling itself; averaging only
-	upgrades accuracy from $1/\epsilon^2$ to $1/\epsilon$. Section~\ref{sec:experiments} reproduces the qualitative
+	upgrades accuracy from $1/\epsilon^2$ to $1/\epsilon$. Section~\ref{sec:experiments} checks the
 	scalings $E_{\mathrm{worst}}\sim\sqrt{n/N}$ and $E_{\mathrm{fixed}}\sim N^{-1/2}$ numerically on Heisenberg and SYK Hamiltonians.
 	
+	\appendix
+	\section{Additional Comments}
+
+	\subsection{A correction to the causality condition}
+
+	Section~C of the original paper extends the concentration argument to general products of random unitaries. Its causality condition is written in the form
+	\[
+	\Pr\!\bigl[V_k\mid V_N,\ldots,V_{k+1},V_{k-1},\ldots,V_1\bigr]
+	=\Pr\!\bigl[V_k\mid V_{k-1},\ldots,V_1\bigr],
+	\qquad 1\le k\le N.
+	\]
+	Read literally as a conditional-independence statement, this condition is stronger than intended. In fact, if it holds for every $k$, then $V_1,V_2,\ldots,V_N$ must be mutually independent.
+
+	The reason is just the chain rule, written in reverse order:
+	\[
+	\Pr[V_1,\ldots,V_N]
+	=\prod_{k=1}^N \Pr\!\bigl[V_k\mid V_N,\ldots,V_{k+1}\bigr].
+	\]
+	Now apply the displayed condition with no past variables fixed. It gives
+	\[
+	\Pr\!\bigl[V_k\mid V_N,\ldots,V_{k+1}\bigr]=\Pr[V_k].
+	\]
+	Therefore
+	\[
+	\Pr[V_1,\ldots,V_N]=\prod_{k=1}^N \Pr[V_k],
+	\]
+	which is exactly mutual independence. This is not the intended adapted-random-process setting, because in an adaptive product formula $V_k$ is allowed to depend on the previously sampled gates.
+
+	A more accurate way to state the adapted setting is to separate the past from the new randomness. Let $U_1,U_2,\ldots,U_N$ be mutually independent random variables, and set
+	\[
+	V_k=f_k(V_1,V_2,\ldots,V_{k-1},U_k),
+	\qquad 1\le k\le N,
+	\]
+	where each $f_k$ is a deterministic measurable function. Equivalently, with the filtration
+	\[
+	\mathcal F_k=\sigma(U_1,\ldots,U_k)=\sigma(V_1,\ldots,V_k,U_1,\ldots,U_k),
+	\]
+	the random unitary $V_k$ is $\mathcal F_k$-measurable, and the only new randomness entering at time $k$ is $U_k$, which is independent of $\mathcal F_{k-1}$. This is the usual causality or adaptedness condition needed for martingale arguments: the present choice may depend on the past, but it cannot depend on future random choices.
+
+	\subsection{Group contribution}
+
+	Yuan Lai wrote the theory part. Tang Jinqi handled the numerical experiments and code.
+
+	\subsection{AI usage report}
+
+	AI was used in three places: reading and organizing the paper, debugging the experiment code, and polishing the English. The authors checked the mathematical statements, the experimental setup, and the final conclusions.
+
 	\begin{thebibliography}{9}
 		\setlength{\itemsep}{0pt}
 		\bibitem{CHKT} C.-F.\ Chen, H.-Y.\ Huang, R.\ Kueng, J.\ A.\ Tropp, \emph{Concentration for random product formulas}, arXiv:2008.11751.
 		\bibitem{Campbell} E.\ Campbell, \emph{Random compiler for fast Hamiltonian simulation}, Phys.\ Rev.\ Lett.\ \textbf{123}, 070503 (2019).
+		\bibitem{MaldacenaStanford} J.\ Maldacena and D.\ Stanford, \emph{Remarks on the Sachdev--Ye--Kitaev model}, Phys.\ Rev.\ D \textbf{94}, 106002 (2016).
+		\bibitem{PolchinskiRosenhaus} J.\ Polchinski and V.\ Rosenhaus, \emph{The spectrum in the Sachdev--Ye--Kitaev model}, J.\ High Energy Phys.\ \textbf{2016}(4), 001 (2016).
+		\bibitem{SachdevYe} S.\ Sachdev and J.\ Ye, \emph{Gapless spin-fluid ground state in a random quantum Heisenberg magnet}, Phys.\ Rev.\ Lett.\ \textbf{70}, 3339--3342 (1993).
 		\bibitem{Tropp} J.\ A.\ Tropp, \emph{Freedman's inequality for matrix martingales}, Electron.\ Commun.\ Probab.\ \textbf{16}, 262--270 (2011).
 	\end{thebibliography}
 	
 \end{document}
+
+
+
+
+
+
+
+
+
+
+
+
 
 
