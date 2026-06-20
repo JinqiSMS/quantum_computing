@@ -24,16 +24,16 @@
 
 ## 实验设置
 
-Heisenberg 实验使用归一化一维链哈密顿量
-
+Heisenberg 实验使用归一化一维链哈密顿量，
+<!--
 $$
 H=\frac{1}{n-1}\sum_{i=1}^{n-1}(X_iX_{i+1}+Y_iY_{i+1}+Z_iZ_{i+1}),
 $$
-
+-->
 其中系统规模为 $n=4,5,6,7,8$ 个量子比特，演化时间为 $t=2$，并且 $\lambda=3$。
 
-SYK 实验先按照标准高斯耦合生成
-
+SYK 实验先按照标准高斯耦合生成，
+<!--
 $$
 H=\sum_{1\le i<j<k<l\le n}J_{ijkl}\chi_i\chi_j\chi_k\chi_l,
 $$
@@ -43,7 +43,7 @@ $$
 $$
 \overline{J_{ijkl}}=0,\qquad \overline{J_{ijkl}^2}=\frac{3!J^2}{n^3}.
 $$
-
+-->
 随后对每个随机 SYK 实例整体缩放，使 qDRIFT 使用的强度统一为 $\lambda=3$。SYK 图中的 $n=8,10,12,14,16$ 表示 Majorana 数，对应 $4,5,6,7,8$ 个量子比特。
 
 ## 运行实验
