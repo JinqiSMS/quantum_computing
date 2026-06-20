@@ -366,7 +366,14 @@ def plot_relative_error_vs_size(
 
     axis.plot(majorana_counts, means, marker="o", color="#d62728", label="simulation")
     axis.fill_between(majorana_counts, means - stds, means + stds, color="#d62728", alpha=0.2)
-    axis.plot(majorana_counts, theory_line, linestyle=":", color="black", label="qubit scaling")
+    if "all input" in title.lower():
+        fit_coefficients = np.polyfit(majorana_counts, means, deg=1)
+        reference_line = np.polyval(fit_coefficients, majorana_counts)
+        reference_label = "empirical linear fit"
+    else:
+        reference_line = np.full_like(majorana_counts, np.mean(means), dtype=float)
+        reference_label = "empirical mean"
+    axis.plot(majorana_counts, reference_line, linestyle=":", color="black", label=reference_label)
     axis.set_title(title)
     axis.set_xlabel("Number of Majoranas n")
     axis.set_ylabel(r"Relative error $\epsilon_n / \epsilon_8$")
@@ -447,6 +454,7 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 
 
 

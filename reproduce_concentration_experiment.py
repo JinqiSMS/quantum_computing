@@ -336,7 +336,14 @@ def plot_relative_error_vs_size(
 
     axis.plot(system_sizes, means, marker="o", color="#d62728", label="simulation")
     axis.fill_between(system_sizes, means - stds, means + stds, color="#d62728", alpha=0.2)
-    axis.plot(system_sizes, theory_line, linestyle=":", color="black", label="theory")
+    if "All input" in title:
+        fit_coefficients = np.polyfit(system_sizes, means, deg=1)
+        reference_line = np.polyval(fit_coefficients, system_sizes)
+        reference_label = "empirical linear fit"
+    else:
+        reference_line = np.full_like(system_sizes, np.mean(means), dtype=float)
+        reference_label = "empirical mean"
+    axis.plot(system_sizes, reference_line, linestyle=":", color="black", label=reference_label)
     axis.set_title(title)
     axis.set_xlabel("Number of qubits n")
     axis.set_ylabel(r"Relative error $\epsilon_n / \epsilon_4$")
@@ -392,3 +399,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
